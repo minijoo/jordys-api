@@ -13,22 +13,19 @@ logs
 results
 tmp
 
-# Build
-public/css/main.css
+# Misc
+converted
+uploads
+jarfile
 
-# Coverage reports
-coverage
+# Build
+build
 
 # API keys and secrets
 .env
 
 # Dependency directory
 node_modules
-bower_components
-
-# Editors
-.idea
-*.iml
 
 # OS metadata
 .DS_Store
