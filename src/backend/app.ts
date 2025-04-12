@@ -91,6 +91,7 @@ const sessionOptions = {
 if (process.env.NODE_ENV === "production") {
   sessionOptions.cookie.sameSite = "none";
   sessionOptions.cookie.secure = true;
+  app.set("trust proxy", 1);
 }
 app.use(session(sessionOptions));
 

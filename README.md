@@ -77,3 +77,31 @@ curl --cookie jarfile -X GET http://localhost:3001/profile
 The `--cookie jarfile` tells CuRL to read the cookie from `jarfile`
 
 You can check `jarfile` contents to see the actual cookie, i.e. saved session.
+
+# Digital Ocean Pushing
+
+1. Locally make changes
+
+```bash
+git commit -m "..."
+git push # main branch
+```
+
+2. SSH into droplet and pull new changes into project
+
+```bash
+cd jordys-api
+git pull
+```
+
+3. Build app
+
+```bash
+npm run build
+```
+
+4. Restart the app using PM2 and existing `ecosystem.config.js` config
+
+```bash
+pm2 start ecosystem.config.js
+```
