@@ -102,7 +102,21 @@ passport.deserializeUser(User.deserializeUser());
 app.use(passport.initialize());
 app.use(passport.session());
 
-app.post("/register", function (req, res) {
+const verifyToken: RequestHandler = (req, res, next) => {
+  const token = process.env.TOKEN || "boopoo";
+  if (!req.headers.authorization) {
+    res.status(401).send("authorization header empty");
+    return;
+  }
+  const [authType, sentToken] = req.headers.authorization.split(" ");
+  if (authType !== "Basic" || sentToken !== token) {
+    res.status(401).send("token provided does not match");
+    return;
+  }
+  next();
+};
+
+app.post("/register", verifyToken, function (req, res) {
   // @TODO - comment out this method so people can't register
   User.register(
     new User({
@@ -436,20 +450,6 @@ app.post(
     }
   }
 );
-
-const verifyToken: RequestHandler = (req, res, next) => {
-  const token = process.env.TOKEN || "boopoo";
-  if (!req.headers.authorization) {
-    res.status(401).send("authorization header empty");
-    return;
-  }
-  const [authType, sentToken] = req.headers.authorization.split(" ");
-  if (authType !== "Basic" || sentToken !== token) {
-    res.status(401).send("token provided does not match");
-    return;
-  }
-  next();
-};
 
 app.get("/backend/posts/all", verifyToken, async (req, res, next) => {
   const findResults = await Post.find();
