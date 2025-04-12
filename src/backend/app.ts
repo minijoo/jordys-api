@@ -42,7 +42,7 @@ interface IPost extends PassportLocalDocument {
   excerpt: string;
   body: string;
   cover_url: string;
-  author_email: string;
+  author: ObjectId;
   gallery: GalleryItem[];
 }
 
@@ -53,7 +53,7 @@ const postSchema: Schema = new mongoose.Schema<IPost>(
     excerpt: String,
     body: String,
     cover_url: String,
-    author_email: String,
+    author: mongoose.Schema.Types.ObjectId,
     gallery: [
       {
         name: String,
@@ -446,10 +446,27 @@ app.post(
         excerpt: req.body.excerpt,
         date: req.body.date,
         body: req.body.postBody,
-        author_email: req.user?.email,
+        author: req.user?._id,
       }).save();
 
       res.send(newPost);
+    } else {
+      res.status(400).send({ errors: valResult.array() });
+    }
+  }
+);
+
+app.get(
+  "/backend/author/:id",
+  verifyToken,
+  param("id").notEmpty().isMongoId(),
+  async (req, res, next) => {
+    const valResult = validationResult(req);
+    if (valResult.isEmpty()) {
+      const result = await User.findById(
+        ObjectId.createFromHexString(req.params?.id)
+      );
+      res.send(result);
     } else {
       res.status(400).send({ errors: valResult.array() });
     }

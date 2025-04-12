@@ -14,6 +14,9 @@ const UserSchema = new Schema({
     required: true,
     unique: true,
   },
+  picture: {
+    type: String,
+  },
 });
 
 UserSchema.plugin(passportLocalMongoose, { usernameField: "email" });

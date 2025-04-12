@@ -13,5 +13,7 @@ declare namespace Express {
   }
   export interface User {
     email: string;
+    _id: import("mongodb").ObjectId;
+    picture: string;
   }
 }
