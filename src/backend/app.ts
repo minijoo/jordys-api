@@ -244,6 +244,7 @@ app.get("/ls", async (req, res, next) => {
 // resp [[name, file],[...]]
 app.post(
   "/util/convert-heic",
+  isAuthenticated,
   upload2.single("heic-file"),
   async (req, res, next) => {
     const file = req.file as Express.Multer.File;
@@ -276,25 +277,9 @@ app.post(
   }
 );
 
-// const output :  = [];
-// files.forEach(async (file) => {
-//   if (file.mimetype === "image/heic") {
-//     const outputBuffer = await convert({
-//       buffer: file.buffer,
-//       format: "JPEG",
-//     });
-//     output.push(outputBuffer)
-//     return;
-//   }
-//   output.push(null);
-//   return;
-// });
-// res.json({output});
-// }
-// );
-
 app.post(
   "/posts/gallery-upload-video/:id",
+  isAuthenticated,
   param("id").notEmpty().isMongoId(),
   upload.array("video_and_cover", 2),
   async (req, res, next) => {
@@ -363,6 +348,7 @@ app.post(
 
 app.post(
   "/posts/gallery-upload/:id",
+  isAuthenticated,
   param("id").notEmpty().isMongoId(),
   upload.array("images", 3),
   async (req, res, next) => {
@@ -532,6 +518,7 @@ app.get(
 
 app.post(
   "/posts/:id",
+  isAuthenticated,
   param("id").notEmpty().isMongoId(),
   body("title").optional(),
   body("excerpt").optional(),
