@@ -6,7 +6,7 @@ import PostType from "../types/post";
 import { body, param, validationResult } from "express-validator";
 import escape from "validator/lib/escape";
 import mongoose, { Schema } from "mongoose";
-import session from "express-session";
+import session, { CookieOptions, SessionOptions } from "express-session";
 import MongoStore from "connect-mongo";
 import passport from "passport";
 import { AuthenticateCallback } from "passport";
@@ -81,14 +81,18 @@ app.use(
 );
 app.use(express.json());
 app.use(express.urlencoded({ extended: false }));
-app.use(
-  session({
-    secret: "your secret key", // The use of environment variables to store the secret, ensuring the secret itself does not exist in your repository. (express-session)
-    resave: false,
-    saveUninitialized: true,
-    store: new MongoStore({ mongoUrl: CONNECTION_STRING }),
-  })
-);
+const sessionOptions = {
+  secret: "your secret key", // The use of environment variables to store the secret, ensuring the secret itself does not exist in your repository. (express-session)
+  resave: false,
+  saveUninitialized: true,
+  store: new MongoStore({ mongoUrl: CONNECTION_STRING }),
+  cookie: {} as CookieOptions,
+};
+if (process.env.NODE_ENV === "production") {
+  sessionOptions.cookie.sameSite = "none";
+  sessionOptions.cookie.secure = true;
+}
+app.use(session(sessionOptions));
 
 /*
   Setup the local passport strategy, add the serialize and
