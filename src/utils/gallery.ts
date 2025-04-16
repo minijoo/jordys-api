@@ -2,7 +2,6 @@ import imageSize from "image-size";
 
 export function getDimensions(buffer: Buffer) {
   const { width, height, orientation } = imageSize(buffer);
-  console.log(width, height, orientation);
   // make whichever is bigger to 1080 and the other maintain ratio
   const bigger = Math.max(width, height);
   const smallr = Math.min(width, height);

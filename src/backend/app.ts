@@ -3,7 +3,7 @@ import { exec } from "child_process";
 import multer from "multer";
 import cors from "cors";
 import PostType from "../types/post";
-import { body, param, validationResult } from "express-validator";
+import { body, param, query, validationResult } from "express-validator";
 import escape from "validator/lib/escape";
 import mongoose, { Schema } from "mongoose";
 import session, { CookieOptions, SessionOptions } from "express-session";
@@ -43,6 +43,7 @@ interface IPost extends PassportLocalDocument {
   body: string;
   cover_url: string;
   author: ObjectId;
+  published: boolean;
   gallery: GalleryItem[];
 }
 
@@ -54,6 +55,7 @@ const postSchema: Schema = new mongoose.Schema<IPost>(
     body: String,
     cover_url: String,
     author: mongoose.Schema.Types.ObjectId,
+    published: Boolean,
     gallery: [
       {
         name: String,
@@ -267,7 +269,6 @@ app.post(
         return;
       }
 
-      console.log(`stdout:\n${stdout}`);
       res.setHeader("Content-Type", "image/jpeg");
       res.sendFile(path.resolve(__dirname, "../../", dest));
 
@@ -326,7 +327,6 @@ app.post(
       post.gallery = [] as GalleryItem[];
     }
 
-    console.log("vv--", vidFile.originalname, "--vv");
     const { width, height } = getDimensions(imgFile.buffer);
 
     const videoItem: GalleryItem = {
@@ -443,15 +443,21 @@ app.post(
 );
 
 app.get(
-  "/backend/author/:id",
+  "/backend/author",
   verifyToken,
-  param("id").notEmpty().isMongoId(),
+  query("ids").notEmpty().isString(),
   async (req, res, next) => {
     const valResult = validationResult(req);
     if (valResult.isEmpty()) {
-      const result = await User.findById(
-        ObjectId.createFromHexString(req.params?.id)
-      );
+      const queryIds = req.query?.ids as string;
+      const ids = queryIds.split(/\s*,\s*/);
+      if (!ids.every((id) => ObjectId.isValid(id))) {
+        res.status(400).send({ errors: "`ids` has a non-id" });
+        return next();
+      }
+      const result = await User.find({
+        _id: { $in: ids.map((id) => ObjectId.createFromHexString(id)) },
+      });
       res.send(result);
     } else {
       res.status(400).send({ errors: valResult.array() });
@@ -460,7 +466,7 @@ app.get(
 );
 
 app.get("/backend/posts/all", verifyToken, async (req, res, next) => {
-  const findResults = await Post.find();
+  const findResults = await Post.find({ published: true });
   res.send(findResults);
 });
 
@@ -525,6 +531,7 @@ app.post(
   body("date").optional().isDate(), // default format is YYYY/MM/DD
   body("postBody").optional(),
   body("cover_url").optional(),
+  body("published").optional().isString(),
   async (req, res, next) => {
     const valResult = validationResult(req);
     if (valResult.isEmpty()) {
@@ -534,7 +541,8 @@ app.post(
           req.body.title ||
           req.body.excerpt ||
           req.body.date ||
-          req.body.postBody
+          req.body.postBody ||
+          req.body.published
         )
       ) {
         res.status(400).send({
@@ -544,13 +552,19 @@ app.post(
         });
         return next();
       }
-      console.log(req.body.date);
       const post = await Post.findById(req.params?.id).exec();
       if (req.body.title) post.title = req.body.title;
       if (req.body.excerpt) post.excerpt = req.body.excerpt;
       if (req.body.date) post.date = req.body.date;
       if (req.body.postBody) post.body = req.body.postBody;
       if (req.body.cover_url) post.cover_url = req.body.cover_url;
+      if (req.body.published)
+        post.published =
+          req.body.published === "yes"
+            ? true
+            : req.body.published === "no"
+            ? false
+            : post.published;
       const updatePost = await post.save();
       res.send(updatePost);
     } else {
