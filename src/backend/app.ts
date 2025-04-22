@@ -24,8 +24,6 @@ const CONNECTION_STRING =
 
 mongoose.connect(CONNECTION_STRING);
 
-// const clientPromise = mongoose.connection.getClient();
-
 type GalleryItem = {
   name: string;
   url: string;
@@ -350,7 +348,7 @@ app.post(
   "/posts/gallery-upload/:id",
   isAuthenticated,
   param("id").notEmpty().isMongoId(),
-  upload.array("images", 3),
+  upload.array("images", 5),
   async (req, res, next) => {
     const files = req.files as Express.Multer.File[];
 
