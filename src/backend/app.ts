@@ -344,6 +344,39 @@ app.post(
   }
 );
 
+app.delete(
+  "/posts/gallery/delete/:id/:itemName",
+  isAuthenticated,
+  param("id").notEmpty().isMongoId(),
+  param("itemName").notEmpty().isString(),
+  async (req, res, next) => {
+    const S3_API = new S3_Api();
+    const resp = await S3_API.deleteFile(
+      "jordysbucket",
+      ["public/assets", req.params?.id, req.params?.itemName].join("/")
+    );
+    if (resp.status !== "ok") {
+      res
+        .status(500)
+        .json({ errors: "S3 delete failed. Message: " + resp.message });
+      return;
+    }
+
+    const post = (await Post.findById(req.params?.id, "gallery")) as IPost;
+
+    if (!post.gallery) {
+      console.log("nothing to delete in mongo");
+      res.send(post);
+    } else {
+      post.gallery = post.gallery.filter(
+        (item) => item.name !== req.params?.itemName
+      );
+      const updatePost = await post.save();
+      res.send(updatePost);
+    }
+  }
+);
+
 app.post(
   "/posts/gallery-upload/:id",
   isAuthenticated,

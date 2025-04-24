@@ -1,4 +1,6 @@
 import {
+  DeleteObjectCommand,
+  DeleteObjectCommandOutput,
   PutObjectCommand,
   PutObjectCommandOutput,
   S3Client,
@@ -13,10 +15,32 @@ const getMimeTypeFromExt = (ext: string) => {
   return "image/" + ext;
 };
 
-/**
- * files with the same `originalname` will map to a single document, race condition
- */
 export default class S3_Api {
+  async deleteFile(bucket: string, pathToFile: string) {
+    if (!pathToFile.length) {
+      return { status: "error", message: "Must provide file" };
+    }
+
+    try {
+      const client = new S3Client({
+        region: "us-east-1",
+      });
+      const command = new DeleteObjectCommand({
+        Bucket: bucket,
+        Key: pathToFile,
+      });
+      const resp = await client.send(command);
+      return { status: "ok", output: resp };
+    } catch (caught) {
+      if (caught instanceof S3ServiceException)
+        return { status: "error", message: caught.message };
+      throw caught;
+    }
+  }
+
+  /**
+   * files with the same `originalname` will map to a single document, race condition
+   */
   async uploadFiles(
     bucket: string,
     path: string,
@@ -31,13 +55,6 @@ export default class S3_Api {
       });
       const responses: PutObjectCommandOutput[] = [];
       files.forEach(async (file) => {
-        // const ext = file.originalname.split(".").reverse()[0];
-        // if (ext === file.originalname) {
-        //   return {
-        //     status: "error",
-        //     message: "[" + file.originalname + "] has no extension",
-        //   };
-        // }
         const input = {
           Body: file.buffer,
           Bucket: bucket,
