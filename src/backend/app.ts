@@ -42,6 +42,7 @@ interface IPost extends PassportLocalDocument {
   cover_url: string;
   author: ObjectId;
   published: boolean;
+  private: boolean;
   gallery: GalleryItem[];
 }
 
@@ -54,6 +55,7 @@ const postSchema: Schema = new mongoose.Schema<IPost>(
     cover_url: String,
     author: mongoose.Schema.Types.ObjectId,
     published: Boolean,
+    private: Boolean,
     gallery: [
       {
         name: String,
@@ -563,6 +565,7 @@ app.post(
   body("postBody").optional(),
   body("cover_url").optional(),
   body("published").optional().isString(),
+  body("private").optional().isString(),
   async (req, res, next) => {
     const valResult = validationResult(req);
     if (valResult.isEmpty()) {
@@ -573,7 +576,8 @@ app.post(
           req.body.excerpt ||
           req.body.date ||
           req.body.postBody ||
-          req.body.published
+          req.body.published ||
+          req.body.private
         )
       ) {
         res.status(400).send({
@@ -596,6 +600,13 @@ app.post(
             : req.body.published === "no"
             ? false
             : post.published;
+      if (req.body.private)
+        post.private =
+          req.body.private === "yes"
+            ? true
+            : req.body.private === "no"
+            ? false
+            : post.private;
       const updatePost = await post.save();
       res.send(updatePost);
     } else {
