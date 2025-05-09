@@ -383,7 +383,7 @@ app.post(
   "/posts/gallery-upload/:id",
   isAuthenticated,
   param("id").notEmpty().isMongoId(),
-  upload.array("images", 5),
+  upload.array("images", 10),
   async (req, res, next) => {
     const files = req.files as Express.Multer.File[];
 
