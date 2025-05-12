@@ -10,10 +10,37 @@ Each blog should have the following values:
 2. Date
 3. Excerpt
 4. Body
-5. (tbd) CoverImage
-6. (tbd) Photos -- photos to include in post and ability to link them as hyperlinks in body.
+5. CoverImage
+6. Gallery -- photos/videos 
 
-# Database
+# Localhost Mongo DB
+
+In `development` Node env, the database location points at 127.0.0.1:27017 (same as localhost:27017). To start up a local instance of mongodb at this address before starting the Node server, first install monogoDB community (I had to get v7.0 for my 2015 Macbook Pro), and follow the instructions to where you [start the `mongod` service](https://www.mongodb.com/docs/manual/tutorial/install-mongodb-on-os-x/#start-mongod.)
+
+Then you can [install mongosh](https://www.mongodb.com/docs/mongodb-shell/install/) to look inside the local instance of mongo db you have just started. The database name the Node server is hard-coded for is `test2`. With mongosh, you can connection to a specific databse like so: `mongosh test2`
+
+# Running the Node server
+
+First clone this repo:
+
+```
+git clone https://github.com/minijoo/jordys-api.git
+cd jordys-api
+```
+
+Install dependencies:
+
+```
+npm i
+```
+
+Serve it up on localhost:
+
+```
+npm run start:dev
+```
+
+This starts the server on localhost:3001. Try 'localhost:3001/posts/all` and you should get a response saying you are not authenticated. 
 
 # Methods
 
@@ -37,9 +64,7 @@ Publishing A Post: `publish`
 1. Choose a post entry.
 2. Execute publish-- generates mdx content. Creates an mdx post file for this post entry and links the two which will be immutable, creating a forever link. The status of the post will become "published", once the execution is complete. If publishing an already linked post, this will replace the contents of the existing mdx file.
 
-# Misc
-
-This API hides the API keys/tokens of the Github REST API and MongoDB.
+@TODO -- add doc for remaining methods (login, logout, etc)
 
 # Authentication
 
@@ -100,8 +125,10 @@ git pull
 npm run build
 ```
 
-4. Restart the app using PM2 and existing `ecosystem.config.js` config
-
+4. Restart the app using PM2 (process manager for Node JS applications) and existing `ecosystem.config.js` config
+   
 ```bash
 pm2 start ecosystem.config.js
 ```
+
+More info on Digital Ocean Ubuntu Node JS App setup (https://www.digitalocean.com/community/tutorials/how-to-set-up-a-node-js-application-for-production-on-ubuntu-22-04)
