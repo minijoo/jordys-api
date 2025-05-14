@@ -531,7 +531,36 @@ app.get(
       const result = await Post.findById(
         ObjectId.createFromHexString(req.params?.id)
       );
-      res.send(result);
+      const prevPost = await Post.find(
+        {
+          $and: [
+            { date: { $lt: new Date(result.date) } },
+            { private: { $ne: true } },
+            { published: true },
+          ],
+        },
+        { _id: true }
+      )
+        .sort({ date: -1 })
+        .limit(1);
+      const nextPost = await Post.find(
+        {
+          $and: [
+            { date: { $gt: new Date(result.date) } },
+            { private: { $ne: true } },
+            { published: true },
+          ],
+        },
+        { _id: true }
+      )
+        .sort({ date: 1 })
+        .limit(1);
+      const resp = {
+        post: result,
+        prevPostId: prevPost.length === 1 ? prevPost[0]._id : null,
+        nextPostId: nextPost.length === 1 ? nextPost[0]._id : null,
+      };
+      res.send(resp);
     } else {
       res.status(400).send({ errors: valResult.array() });
     }
