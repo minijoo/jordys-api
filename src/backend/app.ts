@@ -254,7 +254,6 @@ app.post(
       res.status(400).json({ error: "no file" });
       return;
     }
-    console.log(file.path);
     const dest = `converted/${file.originalname}.jpg`;
     exec(["magick", file.path, dest].join(" "), (error, stdout, stderr) => {
       if (error) {
