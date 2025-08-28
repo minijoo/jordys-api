@@ -269,7 +269,7 @@ app.post(
         return;
       }
 
-      res.setHeader("Content-Type", "image/jpeg");
+      res.set({"Content-Type": "image/jpeg"});
       res.sendFile(path.resolve(__dirname, "../../", dest));
 
       // unlinkSync(path.resolve(__dirname, "../..", dest));
