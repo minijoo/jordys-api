@@ -15,7 +15,7 @@ Each blog should have the following values:
 
 # Localhost Mongo DB
 
-In `development` Node env, the database location points at 127.0.0.1:27017 (same as localhost:27017). To start up a local instance of mongodb at this address before starting the Node server, first install monogoDB community (I had to get v7.0 for my 2015 Macbook Pro), and follow the instructions to where you [start the `mongod` service](https://www.mongodb.com/docs/manual/tutorial/install-mongodb-on-os-x/#start-mongod.)
+In `development` Node env, the database location points at 127.0.0.1:27017 (same as localhost:27017). To start up a local instance of mongodb at this address before starting the Node server, first install monogoDB community (I had to get v7.0 for my 2015 Macbook Pro), and follow the instructions to where you [start the `mongod` service](https://www.mongodb.com/docs/manual/tutorial/install-mongodb-on-os-x/#start-mongod.) (If using `mongod` and not homebrew, create .conf file and use `sudo`)
 
 Then you can [install mongosh](https://www.mongodb.com/docs/mongodb-shell/install/) to look inside the local instance of mongo db you have just started. The database name the Node server is hard-coded for is `test2`. With mongosh, you can connection to a specific databse like so: `mongosh test2`
 
