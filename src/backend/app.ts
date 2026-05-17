@@ -499,7 +499,7 @@ app.get(
   }
 );
 
-app.get("/backend/posts/tech", verifyToken, async (req, res, next) => {
+app.get("/backend/techposts", verifyToken, async (req, res, next) => {
   const findResults = await Post.find({ published: true, is_tech_post: true });
   res.send(findResults);
 });
