@@ -43,6 +43,7 @@ interface IPost extends PassportLocalDocument {
   author: ObjectId;
   published: boolean;
   private: boolean;
+  is_tech_post: boolean;
   gallery: GalleryItem[];
 }
 
@@ -56,6 +57,7 @@ const postSchema: Schema = new mongoose.Schema<IPost>(
     author: mongoose.Schema.Types.ObjectId,
     published: Boolean,
     private: Boolean,
+    is_tech_post: Boolean,
     gallery: [
       {
         name: String,
@@ -123,7 +125,7 @@ const verifyToken: RequestHandler = (req, res, next) => {
   next();
 };
 
-app.post("/register", verifyToken, function (req, res) {
+app.post("/register", verifyToken, function(req, res) {
   // @TODO - comment out this method so people can't register
   User.register(
     new User({
@@ -131,7 +133,7 @@ app.post("/register", verifyToken, function (req, res) {
       username: req.body.username,
     }),
     req.body.password,
-    function (err, msg) {
+    function(err, msg) {
       if (err) {
         res.status(500).send(err);
       } else {
@@ -167,7 +169,7 @@ app.post(
         return;
       }
 
-      req.logIn(user, function (err) {
+      req.logIn(user, function(err) {
         if (err) {
           return next(err);
         }
@@ -178,8 +180,8 @@ app.post(
   }
 );
 
-app.get("/logout", function (req, res, next) {
-  req.logout(function (err) {
+app.get("/logout", function(req, res, next) {
+  req.logout(function(err) {
     if (err) {
       return next(err);
     }
@@ -211,7 +213,7 @@ app.get("/login-success", isAuthenticated, (req, res, next) => {
   We call 'isAuthenticated' to check if the request is
   authenticated or not.
 */
-app.get("/profile", isAuthenticated, function (req, res) {
+app.get("/profile", isAuthenticated, function(req, res) {
   console.log(req.session);
   res.json({ message: "You made it to the secured profie" });
 });
@@ -497,8 +499,13 @@ app.get(
   }
 );
 
+app.get("/backend/posts/tech", verifyToken, async (req, res, next) => {
+  const findResults = await Post.find({ published: true, is_tech_post: true });
+  res.send(findResults);
+});
+
 app.get("/backend/posts/all", verifyToken, async (req, res, next) => {
-  const findResults = await Post.find({ published: true });
+  const findResults = await Post.find({ published: true, is_tech_post: { $ne: true } });
   res.send(findResults);
 });
 
@@ -527,8 +534,9 @@ app.get(
   async (req, res, next) => {
     const valResult = validationResult(req);
     if (valResult.isEmpty()) {
+      const idParam = req.params?.id as string;
       const result = await Post.findById(
-        ObjectId.createFromHexString(req.params?.id)
+        ObjectId.createFromHexString(idParam)
       );
       const prevPost = await Post.find(
         {
@@ -536,6 +544,7 @@ app.get(
             { date: { $lt: new Date(result.date) } },
             { private: { $ne: true } },
             { published: true },
+            { is_tech_post: false },
           ],
         },
         { _id: true }
@@ -548,6 +557,7 @@ app.get(
             { date: { $gt: new Date(result.date) } },
             { private: { $ne: true } },
             { published: true },
+            { is_tech_post: false },
           ],
         },
         { _id: true }
@@ -573,8 +583,9 @@ app.get(
   async (req, res, next) => {
     const valResult = validationResult(req);
     if (valResult.isEmpty()) {
+      const idParam = req.params?.id as string;
       const result = await Post.findById(
-        ObjectId.createFromHexString(req.params?.id)
+        ObjectId.createFromHexString(idParam)
       );
       res.send(result);
     } else {
@@ -626,15 +637,16 @@ app.post(
           req.body.published === "yes"
             ? true
             : req.body.published === "no"
-            ? false
-            : post.published;
+              ? false
+              : post.published;
       if (req.body.private)
         post.private =
           req.body.private === "yes"
             ? true
             : req.body.private === "no"
-            ? false
-            : post.private;
+              ? false
+              : post.private;
+      post.is_tech_post = !!req.body.is_tech_post
       const updatePost = await post.save();
       res.send(updatePost);
     } else {

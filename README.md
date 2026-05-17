@@ -77,6 +77,7 @@ To register user:
 
 ```bash
 curl -H 'Content-Type: application/json' \
+-H 'Authorization: Basic beastmode24' \
 -d '{"username":"First User","password":"p@ssword","email":"firstuser@test.com"}' \
 -X POST \
 http://localhost:3001/register
