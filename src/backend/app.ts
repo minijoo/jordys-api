@@ -384,70 +384,77 @@ app.post(
   "/posts/gallery-upload/:id",
   isAuthenticated,
   param("id").notEmpty().isMongoId(),
-  upload.array("images", 10),
+  upload2.array("images", 10),
   async (req, res, next) => {
     const files = req.files as Express.Multer.File[];
+    const args: string[] = [];
+    files.forEach(file => {
+      const argstr = `'${file.path}\$${req.params?.id}/${file.originalname}\$${file.mimetype}'`;
+      args.push(argstr);
+    })
 
-    const S3_API = new S3_Api();
-    const resp = await S3_API.uploadFiles(
-      "jordysbucket",
-      "public/assets/" + req.params?.id,
-      files
-    );
-    if (resp.status !== "ok") {
-      res
-        .status(500)
-        .json({ errors: "S3 upload failed. Message: " + resp.message });
-      return;
-    }
+    exec(
+      [
+        "scripts/s3-upload-helper",
+        args.join(" ")
+      ].join(" "),
+      async (error, stdout, stderr) => {
+        if (error) {
+          console.error(`error: ${error.message}`);
+          res.status(500).json({ error: error.message });
+          return;
+        }
 
-    const post = (await Post.findById(req.params?.id, "gallery")) as IPost;
+        if (stdout) {
+          const dims = stdout.split('\n')
 
-    // if gallery not found, create one
-    if (!post.gallery) {
-      post.gallery = [] as GalleryItem[];
-    }
+          const post = (await Post.findById(req.params?.id, "gallery")) as IPost;
 
-    const nameHashTable: Set<string> = new Set();
-    post.gallery.forEach(({ name }) => {
-      nameHashTable.add(name);
-    });
+          // if gallery not found, create one
+          if (!post.gallery) {
+            post.gallery = [] as GalleryItem[];
+          }
 
-    files.forEach((f, index) => {
-      const name = f.originalname;
-      const url = `https://d1goytf13un2gh.cloudfront.net/assets/${req.params?.id}/${f.originalname}`;
-      const type = ["video", "image"].find(
-        (el) => el === f.mimetype.split("/")[0]
-      );
+          const nameHashTable: Set<string> = new Set();
+          post.gallery.forEach(({ name }) => {
+            nameHashTable.add(name);
+          });
 
-      let name2 = name;
-      let i = 1;
-      while (nameHashTable.has(name2)) {
-        name2 = name + i;
-        i++;
+          files.forEach((f, index) => {
+            const name = f.originalname;
+            const url = `https://d1goytf13un2gh.cloudfront.net/assets/${req.params?.id}/${f.originalname}`;
+
+            let name2 = name;
+            let i = 1;
+            while (nameHashTable.has(name2)) {
+              name2 = name + i;
+              i++;
+            }
+
+            const toPush: GalleryItem = {
+              name: name2,
+              url,
+              mimetype: f.mimetype,
+              type: 'image'
+            };
+
+            const [width, height] = dims[index].split(' ');
+            toPush.width = parseInt(width);
+            toPush.height = parseInt(height);
+
+            post.gallery.push(toPush);
+          });
+
+          const updatePost = await post.save();
+          res.send(updatePost);
+
+
+        }
       }
+    )
 
-      const toPush: GalleryItem = {
-        name: name2,
-        url,
-        mimetype: f.mimetype,
-        type: type ? type : "unsupported",
-      };
+    return
 
-      if (type === "image") {
-        const { width, height } = getDimensions(f.buffer);
-        toPush.width = width;
-        toPush.height = height;
-      } else {
-        toPush.height = 1080;
-        toPush.width = 1080;
-      }
-
-      post.gallery.push(toPush);
-    });
-
-    const updatePost = await post.save();
-    res.send(updatePost);
   }
 );
 

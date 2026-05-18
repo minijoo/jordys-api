@@ -1,0 +1,71 @@
+#!/bin/bash
+
+if [[ $# -lt 1 ]]; then
+  echo 'Not enough arguments. One required' >& 2
+  exit 1
+fi
+
+BUCKET="s3://jordysbucket"
+KEY_PRE="public/assets"
+RESIZE=200
+
+for ARG in "$@"; do
+  FILEPATH=$(cut -d'$' -f1 <<< $ARG)
+  DEST=$(cut -d'$' -f2 <<< $ARG)
+  MIMETYPE=$(cut -d'$' -f3 <<< $ARG)
+  DESTPATH="${DEST%\/*}"
+  DESTNAME="${DEST##*\/}"
+
+  echo process file at "$FILEPATH" >& 2
+  echo upload resized resource to "$DEST" >& 2
+  echo upload original resource to "${DESTPATH}/original/${DESTNAME}" >& 2
+  echo extension is $MIMETYPE >& 2
+
+  FORMAT="%w %h"
+
+  LEN=$(magick identify -auto-orient -format "$FORMAT" "$FILEPATH")
+
+  WIDTH=$(cut -d' ' -f1 <<< $LEN)
+  HEIGHT=$(cut -d' ' -f2 <<< $LEN)
+
+  echo w $WIDTH h $HEIGHT >& 2
+
+  GEOMETRY=
+  if [[ $HEIGHT -gt $WIDTH ]]; then
+    GEOMETRY='x'
+  fi
+
+  if [[ $WIDTH -le $RESIZE && $HEIGHT -le $RESIZE ]]; then
+    echo 'Resize length is greater than or equal to both width and height of file. No need for resizing' >& 2
+
+    # upload FILEPATH to s3 at DEST with MIMETYPE
+    aws s3 cp "$FILEPATH" "${BUCKET}/${KEY_PRE}/${DEST}" --content-type "$MIMETYPE" --quiet
+    echo $WIDTH $HEIGHT
+    continue
+  fi
+
+  GEOMETRY="${GEOMETRY}$RESIZE"
+
+  echo $GEOMETRY >& 2
+
+  magick "$FILEPATH" -resize $GEOMETRY "${FILEPATH}.resize"
+
+  if [[ ! -f "${FILEPATH}.resize" ]]; then
+    echo "Resize failed. Skipping this argument." >& 2
+    continue
+  fi
+
+  echo "Resize Success!" >& 2
+
+  LEN=$(magick identify -auto-orient -format "$FORMAT" "${FILEPATH}.resize")
+
+  #upload FILEPATH.resize to s3 at DEST with MIMETYPE
+  aws s3 cp "${FILEPATH}.resize" "${BUCKET}/${KEY_PRE}/${DEST}" --content-typ "$MIMETYPE" --quiet
+  #upload FILEPATH to s3 at DESTPATH/original/DESTNAME with MIMETYPE
+  aws s3 cp "${FILEPATH}" "${BUCKET}/${KEY_PRE}/${DESTPATH}/original/${DESTNAME}" --content-type "$MIMETYPE" --quiet
+
+  echo $LEN
+done
+
+exit 0
+
