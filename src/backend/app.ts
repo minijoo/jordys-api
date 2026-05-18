@@ -506,13 +506,18 @@ app.get(
   }
 );
 
+app.get("/backend/homeposts", verifyToken, async (req, res, next) => {
+  const findResults = await Post.find({ published: true, is_tech_post: { $ne: true } });
+  res.send(findResults);
+});
+
 app.get("/backend/techposts", verifyToken, async (req, res, next) => {
   const findResults = await Post.find({ published: true, is_tech_post: true });
   res.send(findResults);
 });
 
 app.get("/backend/posts/all", verifyToken, async (req, res, next) => {
-  const findResults = await Post.find({ published: true, is_tech_post: { $ne: true } });
+  const findResults = await Post.find({ published: true });
   res.send(findResults);
 });
 
@@ -551,7 +556,7 @@ app.get(
             { date: { $lt: new Date(result.date) } },
             { private: { $ne: true } },
             { published: true },
-            { is_tech_post: false },
+            { is_tech_post: { $ne: true } },
           ],
         },
         { _id: true }
@@ -564,7 +569,7 @@ app.get(
             { date: { $gt: new Date(result.date) } },
             { private: { $ne: true } },
             { published: true },
-            { is_tech_post: false },
+            { is_tech_post: { $ne: true } },
           ],
         },
         { _id: true }

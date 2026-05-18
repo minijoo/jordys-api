@@ -7,7 +7,7 @@ fi
 
 BUCKET="s3://jordysbucket"
 KEY_PRE="public/assets"
-RESIZE=200
+RESIZE=700
 
 for ARG in "$@"; do
   FILEPATH=$(cut -d'$' -f1 <<< $ARG)
