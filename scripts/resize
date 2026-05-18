@@ -1,0 +1,42 @@
+#!/bin/bash
+
+BUCKET="jordysbucket"
+S3BUCKET="s3://${BUCKET}"
+KEY_PRE="public/assets"
+FOLDER=$1
+
+OBJ_NAMES=$(
+  aws s3 ls "${S3BUCKET}/${KEY_PRE}/${FOLDER}/" \
+  | awk '{$1=$2=$3=""; print $0}' | sed $'s/^[ \t]*//'
+)
+
+while read -r NAME; do
+  if [[ -z $NAME ]]; then
+    continue
+  fi
+  if [[ $NAME = *_cover ]]; then
+    echo Skipped: $NAME. Reason: cover image
+    continue
+  fi
+  if [[ $NAME == original/ ]]; then
+    echo Skipped: $NAME. Reason: folder
+    continue
+  fi
+
+  CTYPE=$(
+    aws s3api head-object --bucket "${BUCKET}" --key "${KEY_PRE}/${FOLDER}/${NAME}" --query 'ContentType' --output text
+  )
+
+  if [[ $CTYPE = video* ]]; then
+    echo Skipped: $NAME. Reason: video file
+    continue
+  fi
+
+  echo Processing $NAME. Type: $CTYPE
+  FILEPATH="images/${NAME}"
+  aws s3api get-object --bucket "${BUCKET}" --key "${KEY_PRE}/${FOLDER}/${NAME}" "$FILEPATH"
+
+  ./s3-upload-helper "${FILEPATH}\$${FOLDER}/${NAME}\$$CTYPE"
+
+done < <(echo "$OBJ_NAMES")
+# done < <(echo gc1)
