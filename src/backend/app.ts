@@ -35,6 +35,7 @@ type GalleryItem = {
 };
 
 interface IPost extends PassportLocalDocument {
+  dashname: string;
   title: string;
   date: Date;
   excerpt: string;
@@ -49,6 +50,7 @@ interface IPost extends PassportLocalDocument {
 
 const postSchema: Schema = new mongoose.Schema<IPost>(
   {
+    dashname: String,
     title: String,
     date: Date,
     excerpt: String,
@@ -539,6 +541,61 @@ app.get(
   }
 );
 
+const findNeighboringPosts = async (dt: Date | string) => {
+  const prevPost = await Post.find(
+    {
+      $and: [
+        { date: { $lt: new Date(dt) } },
+        { private: { $ne: true } },
+        { published: true },
+        { is_tech_post: { $ne: true } },
+      ],
+    },
+    { _id: true }
+  )
+    .sort({ date: -1 })
+    .limit(1);
+  const nextPost = await Post.find(
+    {
+      $and: [
+        { date: { $gt: new Date(dt) } },
+        { private: { $ne: true } },
+        { published: true },
+        { is_tech_post: { $ne: true } },
+      ],
+    },
+    { _id: true }
+  )
+    .sort({ date: 1 })
+    .limit(1);
+  return {
+    prevPostId: prevPost.length === 1 ? prevPost[0]._id : null,
+    nextPostId: nextPost.length === 1 ? nextPost[0]._id : null,
+  };
+}
+
+app.get(
+  "/backend/posts/dashname/:dashname",
+  verifyToken,
+  param("dashname").notEmpty().isString(),
+  async (req, res, next) => {
+    const valResult = validationResult(req);
+    if (valResult.isEmpty()) {
+      const dashname = req.params?.dashname as string;
+      const result = await Post.findOne({ dashname: dashname });
+      const { nextPostId, prevPostId } = await findNeighboringPosts(result.date);
+      const resp = {
+        post: result,
+        prevPostId,
+        nextPostId
+      };
+      res.send(resp);
+    } else {
+      res.status(400).send({ errors: valResult.array() });
+    }
+  }
+);
+
 app.get(
   "/backend/posts/:id",
   verifyToken,
@@ -550,36 +607,11 @@ app.get(
       const result = await Post.findById(
         ObjectId.createFromHexString(idParam)
       );
-      const prevPost = await Post.find(
-        {
-          $and: [
-            { date: { $lt: new Date(result.date) } },
-            { private: { $ne: true } },
-            { published: true },
-            { is_tech_post: { $ne: true } },
-          ],
-        },
-        { _id: true }
-      )
-        .sort({ date: -1 })
-        .limit(1);
-      const nextPost = await Post.find(
-        {
-          $and: [
-            { date: { $gt: new Date(result.date) } },
-            { private: { $ne: true } },
-            { published: true },
-            { is_tech_post: { $ne: true } },
-          ],
-        },
-        { _id: true }
-      )
-        .sort({ date: 1 })
-        .limit(1);
+      const { nextPostId, prevPostId } = await findNeighboringPosts(result.date);
       const resp = {
         post: result,
-        prevPostId: prevPost.length === 1 ? prevPost[0]._id : null,
-        nextPostId: nextPost.length === 1 ? nextPost[0]._id : null,
+        prevPostId,
+        nextPostId
       };
       res.send(resp);
     } else {
@@ -659,6 +691,21 @@ app.post(
               ? false
               : post.private;
       post.is_tech_post = !!req.body.is_tech_post
+
+      const dash = (post.title as string).toLowerCase().replace(' ', '-').replace(/[^-a-zA-Z0-9]/, '');
+      if (dash) {
+        const dashCheck = await Post.findOne({
+          $and: [
+            { '_id': { $ne: post._id } },
+            { dashname: dash }]
+        }, { '_id': true });
+        if (dashCheck) {
+          res.status(400).send({ errors: ['title results in a conflicting dashname'] });
+          return;
+        }
+      }
+      post.dashname = dash;
+      console.log(post.dashname);
       const updatePost = await post.save();
       res.send(updatePost);
     } else {
@@ -666,103 +713,5 @@ app.post(
     }
   }
 );
-// app.get("/last-commits", async (req, res, next) => {
-//   const api = new GithubAPI(GITHUB_OWNER, GITHUB_REPO);
-//   const commits = await api.listCommits();
-//   res.send(commits.join("<br>"));
-// });
-
-// app.get("/posts", isAuthenticated, async (req, res, next) => {
-//   const res = await
-// });
-
-/** UNUSED OLD STUFF FROM HERE TO BOTTOM */
-
-// app.get(
-//   "/delete-post/:sha/:pathString",
-//   param("sha").notEmpty().isHash("sha1"),
-//   param("pathString").notEmpty(),
-//   async (req, res, next) => {
-//     const valResult = validationResult(req);
-//     if (valResult.isEmpty()) {
-//       const sha = req.params?.sha;
-//       const api = new GithubAPI(GITHUB_OWNER, GITHUB_REPO);
-//       const result = await api.deleteFile(
-//         `_posts/${req.params?.pathString}.mdx`,
-//         sha
-//       );
-//       res.send(result);
-//     } else {
-//       res.status(400).send({ errors: valResult.array() });
-//     }
-//   }
-// );
-
-// app.post(
-//   "/create-post/:sha?/:pathString?",
-//   param("sha").optional().isHash("sha1"), // required for updates
-//   param("pathString").optional(), // required for updates
-//   body("title").notEmpty(),
-//   body("excerpt").notEmpty(),
-//   body("date").notEmpty().isDate(), // default format is YYYY/MM/DD
-//   body("postBody").notEmpty(),
-//   async (req, res, next) => {
-//     if (!req.params?.sha !== !req.params?.pathString) {
-//       res
-//         .status(400)
-//         .send(
-//           "Server error. For updates, both path parameters, sha and pathString are required. Otherwise, both must be empty for create"
-//         );
-//       return;
-//     }
-
-//     const valResult = validationResult(req);
-//     if (valResult.isEmpty()) {
-//       const post: PostType = {
-//         title: req.body.title,
-//         excerpt: req.body.excerpt,
-//         date: new Date(req.body.date), // is this of Date-type?
-//         body: req.body.postBody,
-//       };
-
-//       // convert content to base64
-//       const contents = btoa(generateMdxContentFromObject(post));
-
-//       // api call
-//       const api = new GithubAPI(GITHUB_OWNER, GITHUB_REPO);
-//       const result = await api.createOrUpdateFileContents(
-//         `_posts/${
-//           req.params?.pathString
-//             ? req.params?.pathString
-//             : escape(req.body.title.split(" ").join("-"))
-//         }.mdx`,
-//         contents,
-//         req.params?.sha
-//       );
-
-//       res.send(result);
-//     } else {
-//       res.status(400).send({ errors: valResult.array() });
-//     }
-//   }
-// );
-
-// const generateMdxContentFromObject = (post: PostType) => {
-//   // could move this to util func.
-//   return `---
-//   title: '${post.title}'
-//   excerpt: '${post.excerpt}'
-//   coverImage: ''
-//   date: '${post.date.toISOString().slice(0, 10)}T09:30:00.000Z'
-//   author:
-//     name: Jordy
-//   picture: ''
-//   ogImage:
-//     url: ''
-// ---
-
-// ${post.body}
-// `;
-// };
 
 export default app;
