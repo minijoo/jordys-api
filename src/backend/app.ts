@@ -705,7 +705,6 @@ app.post(
         }
       }
       post.dashname = dash;
-      console.log(post.dashname);
       const updatePost = await post.save();
       res.send(updatePost);
     } else {
