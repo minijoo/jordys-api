@@ -4,6 +4,11 @@ BUCKET="jordysbucket"
 S3BUCKET="s3://${BUCKET}"
 KEY_PRE="public/assets"
 FOLDER=$1
+DEST=$2
+
+if [[ -z $DEST ]]; then 
+  DEST="$FOLDER"
+fi
 
 OBJ_NAMES=$(
   aws s3 ls "${S3BUCKET}/${KEY_PRE}/${FOLDER}/" \
@@ -36,7 +41,7 @@ while read -r NAME; do
   FILEPATH="images/${NAME}"
   aws s3api get-object --bucket "${BUCKET}" --key "${KEY_PRE}/${FOLDER}/${NAME}" "$FILEPATH"
 
-  ./s3-upload-helper "${FILEPATH}\$${FOLDER}/${NAME}\$$CTYPE"
+  ./s3-upload-helper "${FILEPATH}\$${DEST}/${NAME}\$$CTYPE"
 
 done < <(echo "$OBJ_NAMES")
 # done < <(echo gc1)
