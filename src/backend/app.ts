@@ -692,7 +692,7 @@ app.post(
               : post.private;
       post.is_tech_post = !!req.body.is_tech_post
 
-      const dash = (post.title as string).toLowerCase().replace(' ', '-').replace(/[^-a-zA-Z0-9]/, '');
+      const dash = (post.title as string).toLowerCase().replace(/ /g, '-').replace(/[^-a-zA-Z0-9]/g, '');
       if (dash) {
         const dashCheck = await Post.findOne({
           $and: [
