@@ -48,6 +48,38 @@ interface IPost extends PassportLocalDocument {
   gallery: GalleryItem[];
 }
 
+interface IRating {
+  _id: string
+  name: string
+  link: string
+  category: string
+  location: string
+  tags: string[]
+  notes: string
+  rating: number;
+  editDate: Date;
+  imgUrl?: string
+  imgWidth: number
+  imgHeight: number
+}
+
+const ratingSchema: Schema = new mongoose.Schema<IRating>(
+  {
+    name: String,
+    link: String,
+    category: String,
+    location: String,
+    tags: [String],
+    notes: String,
+    rating: Number,
+    editDate: Date,
+    imgUrl: String,
+    imgWidth: Number,
+    imgHeight: Number
+  }
+
+);
+
 const postSchema: Schema = new mongoose.Schema<IPost>(
   {
     dashname: String,
@@ -76,6 +108,8 @@ const postSchema: Schema = new mongoose.Schema<IPost>(
 );
 
 const Post = mongoose.model("Post", postSchema);
+
+const Rating = mongoose.model("Rating", ratingSchema);
 
 const app = express();
 
@@ -527,6 +561,93 @@ app.get("/posts/all", isAuthenticated, async (req, res, next) => {
   const findResults = await Post.find();
   res.send(findResults);
 });
+
+app.get("/ratings", async (req, res, next) => {
+  const findResults = await Rating.find();
+  res.send(findResults);
+});
+
+app.post(
+  "/ratings",
+  isAuthenticated,
+  body("_id").optional().isMongoId(),
+  body("name").optional(),
+  body("link").optional(),
+  body("category").optional(),
+  body("location").optional(),
+  body("tags").optional(),
+  body("notes").optional(),
+  body("imgUrl").optional(),
+  body("rating").optional().isInt(),
+  async (req, res, next) => {
+    const valResult = validationResult(req);
+    if (valResult.isEmpty()) {
+      if (
+        !(
+          req.body.name ||
+          req.body.link ||
+          req.body.category ||
+          req.body.location ||
+          req.body.tags ||
+          req.body.notes ||
+          req.body.imgUrl ||
+          req.body.rating
+        )
+      ) {
+        res.status(400).send({
+          errors: [
+            "nothing to update",
+          ],
+        });
+        return next();
+      }
+      let rating;
+      if (req.body._id) {
+        rating = await Rating.findById(req.body._id).exec();
+      } else {
+        rating = await new Rating({});
+      }
+      if (req.body.name) rating.name = req.body.name;
+      if (req.body.link) rating.link = req.body.link;
+      if (req.body.category) rating.category = req.body.category;
+      if (req.body.location) rating.location = req.body.location;
+      if (req.body.tags) rating.tags = req.body.tags;
+      if (req.body.notes) rating.notes = req.body.notes;
+      if (req.body.imgUrl) {
+        const resp = await fetch(req.body.imgUrl);
+        if (resp.ok) {
+          const buffer = Buffer.from(await resp.arrayBuffer());
+          const { width, height } = getDimensions(buffer);
+          rating.imgUrl = req.body.imgUrl;
+          rating.imgWidth = width;
+          rating.imgHeight = height;
+        }
+      }
+      if (req.body.rating) rating.rating = req.body.rating;
+      rating.editDate = new Date();
+
+      const updateRating = await rating.save();
+      res.send(updateRating);
+    } else {
+      res.status(400).send({ errors: valResult.array() });
+    }
+  }
+);
+
+app.delete(
+  "/ratings/:id",
+  param("id").notEmpty().isMongoId(),
+  async (req, res, next) => {
+    const valResult = validationResult(req);
+    if (valResult.isEmpty()) {
+      const result = await Rating.deleteOne({ _id: req.params?.id });
+      res.send(result);
+    } else {
+      res.status(400).send({ errors: valResult.array() });
+    }
+  }
+);
+
 app.get(
   "/posts/delete/:id",
   param("id").notEmpty().isMongoId(),
