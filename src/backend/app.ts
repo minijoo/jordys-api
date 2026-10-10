@@ -17,6 +17,8 @@ import { PassportLocalDocument } from "mongoose";
 import path from "path";
 import { getDimensions } from "../utils/gallery";
 
+const TITLE_REGEX = /<title[^<]*>([^<]*)/;
+
 const CONNECTION_STRING =
   process.env.NODE_ENV === "production"
     ? `mongodb+srv://${process.env.MONGO_USERNAME}:${process.env.MONGO_PASSWORD}@cluster0.rvne8rz.mongodb.net/`
@@ -48,10 +50,17 @@ interface IPost extends PassportLocalDocument {
   gallery: GalleryItem[];
 }
 
+type LinkRead = {
+  title?: string;
+  url: string;
+}
+
 interface IRating {
   _id: string
   name: string
-  link: string
+  engName: string
+  links: string
+  linksRead: LinkRead[]
   category: string
   location: string
   tags: string[]
@@ -59,6 +68,10 @@ interface IRating {
   rating: number;
   editDate: Date;
   imgUrl?: string
+  gmapsUrl?: string
+  tabeUrl?: string
+  naverUrl?: string
+  address: string;
   imgWidth: number
   imgHeight: number
 }
@@ -66,7 +79,14 @@ interface IRating {
 const ratingSchema: Schema = new mongoose.Schema<IRating>(
   {
     name: String,
-    link: String,
+    engName: String,
+    links: String,
+    linksRead: [
+      {
+        title: String,
+        url: String
+      }
+    ],
     category: String,
     location: String,
     tags: [String],
@@ -74,6 +94,10 @@ const ratingSchema: Schema = new mongoose.Schema<IRating>(
     rating: Number,
     editDate: Date,
     imgUrl: String,
+    gmapsUrl: String,
+    tabeUrl: String,
+    naverUrl: String,
+    address: String,
     imgWidth: Number,
     imgHeight: Number
   }
@@ -572,12 +596,17 @@ app.post(
   isAuthenticated,
   body("_id").optional().isMongoId(),
   body("name").optional(),
-  body("link").optional(),
+  body("engName").optional(),
+  body("links").optional(),
   body("category").optional(),
   body("location").optional(),
   body("tags").optional(),
   body("notes").optional(),
   body("imgUrl").optional(),
+  body("gmapsUrl").optional(),
+  body("tabeUrl").optional(),
+  body("naverUrl").optional(),
+  body("address").optional(),
   body("rating").optional().isInt(),
   async (req, res, next) => {
     const valResult = validationResult(req);
@@ -585,12 +614,17 @@ app.post(
       if (
         !(
           req.body.name ||
-          req.body.link ||
+          req.body.engName ||
+          req.body.links ||
           req.body.category ||
           req.body.location ||
           req.body.tags ||
           req.body.notes ||
           req.body.imgUrl ||
+          req.body.gmapsUrl ||
+          req.body.tabeUrl ||
+          req.body.naverUrl ||
+          req.body.address ||
           req.body.rating
         )
       ) {
@@ -608,7 +642,31 @@ app.post(
         rating = await new Rating({});
       }
       if (req.body.name) rating.name = req.body.name;
-      if (req.body.link) rating.link = req.body.link;
+      if (req.body.engName) rating.engName = req.body.engName;
+      if (req.body.links) {
+        const linksRead = [] as LinkRead[];
+        const linkUrls = req.body.links.split(',');
+        for (let i = 0; i < linkUrls.length; ++i) {
+          const url = linkUrls[i];
+          try {
+            const resp = await fetch(url.trim());
+            if (resp.ok) {
+              const htmlText = await resp.text();
+              const match = htmlText.match(TITLE_REGEX);
+              if (match) {
+                const title = match[1].split('|')[0].trim();
+                linksRead.push({ title, url });
+              } else {
+                linksRead.push({ url });
+              }
+            }
+          } catch {
+            console.log('url not valid. skipping..');
+          }
+        }
+        rating.links = req.body.links;
+        rating.linksRead = linksRead;
+      }
       if (req.body.category) rating.category = req.body.category;
       if (req.body.location) rating.location = req.body.location;
       if (req.body.tags) rating.tags = req.body.tags;
@@ -623,6 +681,10 @@ app.post(
           rating.imgHeight = height;
         }
       }
+      if (req.body.gmapsUrl) rating.gmapsUrl = req.body.gmapsUrl;
+      if (req.body.tabeUrl) rating.tabeUrl = req.body.tabeUrl;
+      if (req.body.naverUrl) rating.naverUrl = req.body.naverUrl;
+      if (req.body.address) rating.address = req.body.address;
       if (req.body.rating) rating.rating = req.body.rating;
       rating.editDate = new Date();
 
