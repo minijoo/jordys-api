@@ -16,6 +16,7 @@ import S3_Api from "../libs/s3-api";
 import { PassportLocalDocument } from "mongoose";
 import path from "path";
 import { getDimensions } from "../utils/gallery";
+import { Client } from "@googlemaps/google-maps-services-js";
 
 const TITLE_REGEX = /<title[^<]*>([^<]*)/;
 
@@ -72,6 +73,8 @@ interface IRating {
   tabeUrl?: string
   naverUrl?: string
   address: string;
+  lat: number;
+  lng: number;
   imgWidth: number
   imgHeight: number
 }
@@ -98,6 +101,8 @@ const ratingSchema: Schema = new mongoose.Schema<IRating>(
     tabeUrl: String,
     naverUrl: String,
     address: String,
+    lat: Number,
+    lng: Number,
     imgWidth: Number,
     imgHeight: Number
   }
@@ -684,7 +689,22 @@ app.post(
       if (req.body.gmapsUrl) rating.gmapsUrl = req.body.gmapsUrl;
       if (req.body.tabeUrl) rating.tabeUrl = req.body.tabeUrl;
       if (req.body.naverUrl) rating.naverUrl = req.body.naverUrl;
-      if (req.body.address) rating.address = req.body.address;
+      if (req.body.address) {
+        rating.address = req.body.address;
+        const args = {
+          params: {
+            key: 'AIzaSyDs_UTr6t6MxH-oKgQ5Ws-fIQrPJQ0Scc0',
+            address: req.body.address
+          }
+        };
+        const client = new Client();
+        const gcResponse = await client.geocode(args);
+        const lat = gcResponse.data.results[0].geometry.location.lat;
+        const lng = gcResponse.data.results[0].geometry.location.lng;
+        rating.lat = lat;
+        rating.lng = lng;
+      };
+
       if (req.body.rating) rating.rating = req.body.rating;
       rating.editDate = new Date();
 

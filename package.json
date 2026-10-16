@@ -7,6 +7,7 @@
   },
   "dependencies": {
     "@aws-sdk/client-s3": "^3.758.0",
+    "@googlemaps/google-maps-services-js": "^3.4.2",
     "@octokit/request": "^9.1.4",
     "@octokit/request-error": "^6.1.6",
     "@octokit/rest": "^21.0.2",
