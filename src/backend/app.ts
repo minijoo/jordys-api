@@ -693,7 +693,7 @@ app.post(
         rating.address = req.body.address;
         const args = {
           params: {
-            key: 'AIzaSyDs_UTr6t6MxH-oKgQ5Ws-fIQrPJQ0Scc0',
+            key: process.env.GOOGLE_MAPS_API_KEY || '',
             address: req.body.address
           }
         };
