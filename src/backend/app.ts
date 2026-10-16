@@ -699,10 +699,12 @@ app.post(
         };
         const client = new Client();
         const gcResponse = await client.geocode(args);
-        const lat = gcResponse.data.results[0].geometry.location.lat;
-        const lng = gcResponse.data.results[0].geometry.location.lng;
-        rating.lat = lat;
-        rating.lng = lng;
+        if (gcResponse.data.results.length) {
+          const lat = gcResponse.data.results[0].geometry.location.lat;
+          const lng = gcResponse.data.results[0].geometry.location.lng;
+          rating.lat = lat;
+          rating.lng = lng;
+        }
       };
 
       if (req.body.rating) rating.rating = req.body.rating;
